@@ -40,7 +40,7 @@ export const handleRemoteExitNodePingMessage: MessageHandler = async (
     try {
         // Fetch the current state before updating so we can detect the offline→online transition
         const [currentExitNode] = await db
-            .select({ online: exitNodes.online, reachableAt: exitNodes.reachableAt })
+            .select({ online: exitNodes.online, endpoint: exitNodes.endpoint })
             .from(exitNodes)
             .where(eq(exitNodes.exitNodeId, remoteExitNode.exitNodeId))
             .limit(1);
@@ -55,12 +55,18 @@ export const handleRemoteExitNodePingMessage: MessageHandler = async (
             .where(eq(exitNodes.exitNodeId, remoteExitNode.exitNodeId));
 
         // If the exit node was offline and is now coming online, schedule newt reconnects
-        if (currentExitNode && !currentExitNode.online && currentExitNode.reachableAt) {
+        if (
+            currentExitNode &&
+            !currentExitNode.online &&
+            currentExitNode.endpoint
+        ) {
             scheduleExitNodeReconnect(
                 remoteExitNode.exitNodeId,
-                currentExitNode.reachableAt
+                currentExitNode.endpoint
             ).catch((error) => {
-                logger.error("Failed to schedule exit node reconnect", { error });
+                logger.error("Failed to schedule exit node reconnect", {
+                    error
+                });
             });
         }
     } catch (error) {
