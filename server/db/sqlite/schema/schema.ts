@@ -243,6 +243,29 @@ export const resources = sqliteTable(
     (table) => [index("idx_resources_orgId").on(table.orgId)]
 );
 
+export const redirects = sqliteTable("redirects", {
+    redirectId: integer("redirectId").primaryKey({ autoIncrement: true }),
+    orgId: text("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
+    resourceId: integer("resourceId").references(() => resources.resourceId, {
+        onDelete: "cascade"
+    }),
+    domainId: integer("domainId").references(() => domains.domainId, {
+        onDelete: "cascade"
+    }),
+    niceId: text("niceId").notNull(),
+    name: text("name").notNull(),
+    sourcePath: text("sourcePath").notNull(),
+    destinationUrl: text("destinationUrl"),
+    permanent: integer("permanent", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true)
+});
+
 export const resourceAiProviders = sqliteTable(
     "resourceAiProviders",
     {

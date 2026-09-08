@@ -227,6 +227,27 @@ export const resources = pgTable(
     ]
 );
 
+export const redirects = pgTable("redirects", {
+    redirectId: serial("redirectId").primaryKey(),
+    orgId: varchar("orgId")
+        .references(() => orgs.orgId, {
+            onDelete: "cascade"
+        })
+        .notNull(),
+    resourceId: integer("resourceId").references(() => resources.resourceId, {
+        onDelete: "cascade"
+    }),
+    domainId: integer("domainId").references(() => domains.domainId, {
+        onDelete: "cascade"
+    }),
+    niceId: text("niceId").notNull(),
+    name: varchar("name").notNull(),
+    sourcePath: varchar("sourcePath").notNull(),
+    destinationUrl: varchar("destinationUrl"),
+    permanent: boolean("permanent").notNull().default(false),
+    enabled: boolean("enabled").notNull().default(true)
+});
+
 export const resourceAiProviders = pgTable(
     "resourceAiProviders",
     {
