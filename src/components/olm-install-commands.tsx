@@ -26,14 +26,12 @@ export type OlmInstallCommandsProps = {
     id: string;
     secret: string;
     endpoint: string;
-    version?: string;
 };
 
 export function OlmInstallCommands({
     id,
     secret,
-    endpoint,
-    version = "latest"
+    endpoint
 }: OlmInstallCommandsProps) {
     const t = useTranslations();
 
@@ -94,10 +92,7 @@ export function OlmInstallCommands({
             Run: [
                 {
                     title: t("install"),
-                    link:
-                        version === "latest"
-                            ? `https://github.com/fosrl/cli/releases/latest/download/pangolin-cli_windows_installer.msi`
-                            : `https://github.com/fosrl/cli/releases/download/${version}/pangolin-cli_windows_installer.msi`
+                    link: `https://github.com/fosrl/cli/releases/latest/download/pangolin-cli_windows_installer.msi`
                 },
                 {
                     title: t("run"),
@@ -107,15 +102,15 @@ export function OlmInstallCommands({
             Service: [
                 {
                     title: t("install"),
-                    command: `curl -fsSL https://static.pangolin.net/get-cli.sh | bash`
+                    link: `https://github.com/fosrl/cli/releases/latest/download/pangolin-cli_windows_installer.msi`
                 },
                 {
                     title: t("run"),
-                    command: `sudo pangolin service install client --id ${id} --secret ${secret} --endpoint ${endpoint}`
+                    command: `pangolin service install client --id ${id} --secret ${secret} --endpoint ${endpoint}`
                 },
                 {
                     title: t("check"),
-                    command: `sudo pangolin service status client`
+                    command: `pangolin service status client`
                 }
             ]
         }
@@ -155,9 +150,7 @@ export function OlmInstallCommands({
                 />
 
                 <OptionSelect<string>
-                    label={
-                        platform === "docker" ? t("method") : t("architecture")
-                    }
+                    label={t("method")}
                     options={getArchitectures(platform).map((arch) => ({
                         value: arch,
                         label: arch
@@ -225,13 +218,13 @@ export function OlmInstallCommands({
 function getArchitectures(platform: Platform) {
     switch (platform) {
         case "unix":
-            return ["All"];
+            return ["Run", "Service"];
         case "windows":
-            return ["x64"];
+            return ["Run", "Service"];
         case "docker":
             return ["Docker Compose", "Docker Run"];
         default:
-            return ["x64"];
+            return ["Run"];
     }
 }
 

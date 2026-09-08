@@ -152,7 +152,7 @@
     "siteResourcesHowToAccess": "How to access",
     "siteResourcesTargetsOnSite": "Targets on this site",
     "siteSetting": "{siteName} Settings",
-    "siteNewtTunnel": "Newt Site (Recommended)",
+    "siteNewtTunnel": "Pangolin Site (Recommended)",
     "siteNewtTunnelDescription": "Easiest way to create an entrypoint into any network. No extra setup.",
     "siteWg": "Basic WireGuard",
     "siteWgDescription": "Use any WireGuard client to establish a tunnel. Manual NAT setup required.",

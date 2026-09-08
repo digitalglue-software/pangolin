@@ -45,14 +45,12 @@ export type NewtSiteInstallCommandsProps = {
     id: string;
     secret: string;
     endpoint: string;
-    version?: string;
 };
 
 export function NewtSiteInstallCommands({
     id,
     secret,
-    endpoint,
-    version = "latest"
+    endpoint
 }: NewtSiteInstallCommandsProps) {
     const t = useTranslations();
     const { env } = useEnvContext();
@@ -200,10 +198,7 @@ sudo systemctl enable --now pangolin-site`
             Run: [
                 {
                     title: t("install"),
-                    link:
-                        version === "latest"
-                            ? `https://github.com/fosrl/cli/releases/latest/download/pangolin-cli_windows_installer.msi`
-                            : `https://github.com/fosrl/cli/releases/download/${version}/pangolin-cli_windows_installer.msi`
+                    link: `https://github.com/fosrl/cli/releases/latest/download/pangolin-cli_windows_installer.msi`
                 },
                 {
                     title: t("run"),
@@ -213,15 +208,15 @@ sudo systemctl enable --now pangolin-site`
             Service: [
                 {
                     title: t("install"),
-                    command: `curl -fsSL https://static.pangolin.net/get-cli.sh | bash`
+                    link: `https://github.com/fosrl/cli/releases/latest/download/pangolin-cli_windows_installer.msi`
                 },
                 {
                     title: t("run"),
-                    command: `sudo pangolin service install site --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}${disableSshFlag}`
+                    command: `pangolin service install site --id ${id} --secret ${secret} --endpoint ${endpoint}${acceptClientsFlag}${disableSshFlag}`
                 },
                 {
                     title: t("check"),
-                    command: `sudo pangolin service status site`
+                    command: `pangolin service status site`
                 }
             ]
         },
@@ -266,15 +261,15 @@ sudo systemctl enable --now pangolin-site`
         podman: {
             "Podman Quadlet": [
                 `[Unit]
-Description=Newt container
+Description=Pangolin Site Container
 
 [Container]
-ContainerName=newt
-Image=docker.io/fosrl/newt
+ContainerName=pangolin-site
+Image=docker.io/fosrl/pangolin-cli
 Environment=PANGOLIN_ENDPOINT=${endpoint}
 Environment=SITE_ID=${id}
 Environment=SITE_SECRET=${secret}${!acceptClients ? "\nEnvironment=DISABLE_CLIENTS=true" : ""}
-# Secret=newt-secret,type=env,target=SITE_SECRET
+# Secret=pangolin-secret,type=env,target=SITE_SECRET
 
 [Service]
 Restart=always
@@ -327,9 +322,7 @@ WantedBy=default.target`
                 />
 
                 <OptionSelect<string>
-                    label={
-                        platform === "windows" ? t("architecture") : t("method")
-                    }
+                    label={t("method")}
                     options={getArchitectures(platform).map((arch) => ({
                         value: arch,
                         label: arch
@@ -528,11 +521,11 @@ function getPlatformName(platformName: Platform) {
 function getArchitectures(platform: Platform) {
     switch (platform) {
         case "linux":
-            return ["Run", "Systemd Service"];
+            return ["Run", "Auto Systemd Service", "Manual Systemd Service"];
         case "macos":
-            return ["Run"];
+            return ["Run", "Service"];
         case "windows":
-            return ["x64"];
+            return ["Run", "Service"];
         case "docker":
             return ["Docker Compose", "Docker Run"];
         case "kubernetes":
