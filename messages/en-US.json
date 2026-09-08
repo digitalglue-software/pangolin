@@ -2898,7 +2898,7 @@
     "editInternalResourceDialogAlias": "Alias",
     "editInternalResourceDialogAliasDescription": "An optional internal DNS alias for this resource.",
     "createInternalResourceDialogNoSitesAvailable": "No Sites Available",
-    "createInternalResourceDialogNoSitesAvailableDescription": "You need to have at least one Newt site with a subnet configured to create private resources.",
+    "createInternalResourceDialogNoSitesAvailableDescription": "You need to have at least one site with a subnet configured to create private resources.",
     "createInternalResourceDialogClose": "Close",
     "createInternalResourceDialogCreateClientResource": "Create Private Resource",
     "createInternalResourceDialogCreateClientResourceDescription": "Create a new resource that will only be accessible to clients connected to the organization",
