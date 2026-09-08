@@ -12,11 +12,11 @@
  */
 
 import axios from "axios";
-import { db, exitNodes, newts, sites } from "@server/db";
+import { db, newts, sites } from "@server/db";
 import { eq } from "drizzle-orm";
 import logger from "@server/logger";
 import redisManager from "#private/lib/redis";
-import { sendToClient } from "#private/routers/ws";
+import { sendToClient } from "../ws";
 
 const INITIAL_DELAY_MS = 15 * 1000; // 15 seconds before first check
 const CHECK_INTERVAL_MS = 10 * 1000; // Check every 10 seconds
