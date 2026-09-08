@@ -16,7 +16,7 @@ import { MessageHandler } from "@server/routers/ws";
 import { RemoteExitNode } from "@server/db";
 import { eq } from "drizzle-orm";
 import logger from "@server/logger";
-import { scheduleExitNodeReconnect } from "./exitNodeReconnectScheduler";
+import { exitNodeEvents, EXIT_NODE_ONLINE_EVENT } from "./exitNodeEvents";
 
 /**
  * Handles ping messages from clients and responds with pong
@@ -60,13 +60,9 @@ export const handleRemoteExitNodePingMessage: MessageHandler = async (
             !currentExitNode.online &&
             currentExitNode.endpoint
         ) {
-            scheduleExitNodeReconnect(
-                remoteExitNode.exitNodeId,
-                currentExitNode.endpoint
-            ).catch((error) => {
-                logger.error("Failed to schedule exit node reconnect", {
-                    error
-                });
+            exitNodeEvents.emit(EXIT_NODE_ONLINE_EVENT, {
+                exitNodeId: remoteExitNode.exitNodeId,
+                endpoint: currentExitNode.endpoint
             });
         }
     } catch (error) {

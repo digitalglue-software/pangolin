@@ -17,6 +17,22 @@ import { eq } from "drizzle-orm";
 import logger from "@server/logger";
 import redisManager from "#private/lib/redis";
 import { sendToClient } from "../ws";
+import {
+    exitNodeEvents,
+    EXIT_NODE_ONLINE_EVENT,
+    ExitNodeOnlineEvent
+} from "./exitNodeEvents";
+
+exitNodeEvents.on(
+    EXIT_NODE_ONLINE_EVENT,
+    ({ exitNodeId, endpoint }: ExitNodeOnlineEvent) => {
+        scheduleExitNodeReconnect(exitNodeId, endpoint).catch((error) => {
+            logger.error("Failed to schedule exit node reconnect", {
+                error
+            });
+        });
+    }
+);
 
 const INITIAL_DELAY_MS = 15 * 1000; // 15 seconds before first check
 const CHECK_INTERVAL_MS = 10 * 1000; // Check every 10 seconds
