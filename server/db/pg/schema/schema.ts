@@ -186,7 +186,8 @@ export const resources = pgTable(
         skipToIdpId: integer("skipToIdpId").references(() => idp.idpId, {
             onDelete: "set null"
         }),
-        headers: text("headers"), // comma-separated list of headers to add to the request
+        requestHeaders: text("requestHeaders"),
+        responseHeaders: text("responseHeaders"),
         proxyProtocol: boolean("proxyProtocol").notNull().default(false),
         proxyProtocolVersion: integer("proxyProtocolVersion").default(1),
         maintenanceModeEnabled: boolean("maintenanceModeEnabled")
@@ -682,6 +683,8 @@ export const newts = pgTable(
         secretHash: varchar("secretHash").notNull(),
         dateCreated: varchar("dateCreated").notNull(),
         version: varchar("version"),
+        agent: varchar("agent"), // either newt or cli
+        agentVersion: varchar("agentVersion"),
         siteId: integer("siteId").references(() => sites.siteId, {
             onDelete: "cascade"
         })
@@ -1135,6 +1138,7 @@ export const resourceRules = pgTable("resourceRules", {
             | "COUNTRY_IS_NOT"
             | "ASN"
             | "REGION"
+            | "METHOD"
         >()
         .notNull(), // CIDR, PATH, IP
     value: varchar("value").notNull()
@@ -1159,6 +1163,7 @@ export const resourcePolicyRules = pgTable("resourcePolicyRules", {
             | "COUNTRY_IS_NOT"
             | "ASN"
             | "REGION"
+            | "METHOD"
         >()
         .notNull(),
     value: varchar("value").notNull()

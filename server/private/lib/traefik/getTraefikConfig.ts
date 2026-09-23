@@ -54,6 +54,7 @@ import {
     getValidCertificatesForDomains
 } from "@server/lib/certificates";
 import { build } from "@server/build";
+import license from "#private/license/license";
 import regionalCache from "#private/lib/cache";
 import { TargetWithSite } from "@server/lib/traefik/types";
 import { buildWildcardTls } from "@server/lib/traefik/certResolver";
@@ -132,7 +133,8 @@ export async function getTraefikConfig(
             tlsServerName: resources.tlsServerName,
             setHostHeader: resources.setHostHeader,
             enableProxy: resources.enableProxy,
-            headers: resources.headers,
+            requestHeaders: resources.requestHeaders,
+            responseHeaders: resources.responseHeaders,
             proxyProtocol: resources.proxyProtocol,
             proxyProtocolVersion: resources.proxyProtocolVersion,
             wildcard: resources.wildcard,
@@ -274,7 +276,8 @@ export async function getTraefikConfig(
                 setHostHeader: row.setHostHeader,
                 enableProxy: row.enableProxy,
                 targets: [],
-                headers: row.headers,
+                requestHeaders: row.requestHeaders,
+                responseHeaders: row.responseHeaders,
                 proxyProtocol: row.proxyProtocol,
                 proxyProtocolVersion: row.proxyProtocolVersion ?? 1,
                 path: row.path, // the targets will all have the same path
@@ -395,8 +398,15 @@ export async function getTraefikConfig(
             )
         );
 
+    // Pangolin-managed DNS-01/ACME cert mode requires either a tier1
+    // license (self-hosted) or a saas build - otherwise fall back to
+    // Traefik's own cert resolvers (buildWildcardTls) throughout.
+    const pangolinCertModeEnabled =
+        privateConfig.getRawPrivateConfig().acme?.cert_mode == "pangolin" &&
+        (await license.hasTier(["personal", "tier2", "enterprise"]));
+
     let validCerts: CertificateResult[] = [];
-    if (privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
+    if (pangolinCertModeEnabled) {
         // create a list of all domains to get certs for
         const domains = new Set<string>();
         for (const resource of resourcesMap.values()) {
@@ -522,7 +532,7 @@ export async function getTraefikConfig(
             );
 
             let tls = {};
-            if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
+            if (!pangolinCertModeEnabled) {
                 tls = buildWildcardTls({
                     fullDomain,
                     hasSubdomain: !!resource.subdomain,
@@ -541,6 +551,30 @@ export async function getTraefikConfig(
                     );
                     continue;
                 }
+            }
+
+            config_output.http.services![serviceName] = {
+                loadBalancer: {
+                    servers: buildHttpLoadBalancerServers(targets),
+                    ...(resource.stickySession
+                        ? buildStickySessionCookie(resource.ssl)
+                        : {})
+                }
+            };
+
+            if (resource.tlsServerName) {
+                if (!config_output.http.serversTransports) {
+                    config_output.http.serversTransports = {};
+                }
+                config_output.http.serversTransports![transportName] = {
+                    serverName: resource.tlsServerName,
+                    //unfortunately the following needs to be set. traefik doesn't merge the default serverTransport settings
+                    // if defined in the static config and here. if not set, self-signed certs won't work
+                    insecureSkipVerify: true
+                };
+                config_output.http.services![
+                    serviceName
+                ].loadBalancer.serversTransport = transportName;
             }
 
             if (resource.ssl) {
@@ -680,7 +714,8 @@ export async function getTraefikConfig(
             );
 
             const customHeadersMiddleware = buildCustomHeadersMiddleware(
-                resource.headers,
+                resource.requestHeaders,
+                resource.responseHeaders,
                 resource.setHostHeader,
                 resource.resourceId
             );
@@ -707,31 +742,6 @@ export async function getTraefikConfig(
                 priority: priority,
                 ...(resource.ssl ? { tls } : {})
             };
-
-            config_output.http.services![serviceName] = {
-                loadBalancer: {
-                    servers: buildHttpLoadBalancerServers(targets),
-                    ...(resource.stickySession
-                        ? buildStickySessionCookie(resource.ssl)
-                        : {})
-                }
-            };
-
-            // Add the serversTransport if TLS server name is provided
-            if (resource.tlsServerName) {
-                if (!config_output.http.serversTransports) {
-                    config_output.http.serversTransports = {};
-                }
-                config_output.http.serversTransports![transportName] = {
-                    serverName: resource.tlsServerName,
-                    //unfortunately the following needs to be set. traefik doesn't merge the default serverTransport settings
-                    // if defined in the static config and here. if not set, self-signed certs won't work
-                    insecureSkipVerify: true
-                };
-                config_output.http.services![
-                    serviceName
-                ].loadBalancer.serversTransport = transportName;
-            }
         } else if (resource.mode == "tcp" || resource.mode == "udp") {
             // Non-HTTP (TCP/UDP) configuration
             if (!resource.enableProxy) {
@@ -788,9 +798,7 @@ export async function getTraefikConfig(
                 domainCertResolver,
                 preferWildcardCert
             }) => {
-                if (
-                    !privateConfig.getRawPrivateConfig().flags.use_pangolin_dns
-                ) {
+                if (!pangolinCertModeEnabled) {
                     return buildWildcardTls({
                         fullDomain,
                         hasSubdomain,
@@ -831,9 +839,7 @@ export async function getTraefikConfig(
             maintenancePageUiUrl,
             redirectHttpsMiddlewareName,
             resolveTls: (fullDomain) => {
-                if (
-                    !privateConfig.getRawPrivateConfig().flags.use_pangolin_dns
-                ) {
+                if (!pangolinCertModeEnabled) {
                     // siteResource aliases don't have a per-domain cert
                     // resolver stored, so always fall back to the global
                     // defaults.
@@ -924,7 +930,7 @@ export async function getTraefikConfig(
             const rule = buildHostRule(fullDomain, ir.wildcard);
 
             let tls: any = {};
-            if (!privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
+            if (!pangolinCertModeEnabled) {
                 tls = buildWildcardTls({
                     fullDomain,
                     hasSubdomain: !!ir.subdomain,
@@ -1004,9 +1010,7 @@ export async function getTraefikConfig(
                 const rule = `Host(\`${fullDomain}\`) && ClientIP(\`${exitNode.address}\`)`; // restrict to coming from the exit node ip range that the client is connected to
 
                 let tls: any = {};
-                if (
-                    !privateConfig.getRawPrivateConfig().flags.use_pangolin_dns
-                ) {
+                if (!pangolinCertModeEnabled) {
                     // siteResource aliases don't have a per-domain cert
                     // resolver stored, so always fall back to the global
                     // defaults.
@@ -1080,7 +1084,7 @@ export async function getTraefikConfig(
             .where(eq(exitNodes.exitNodeId, exitNodeId));
 
         let validCertsLoginPages: CertificateResult[] = [];
-        if (privateConfig.getRawPrivateConfig().flags.use_pangolin_dns) {
+        if (pangolinCertModeEnabled) {
             // create a list of all domains to get certs for
             const domains = new Set<string>();
             for (const lp of exitNodeLoginPages) {
@@ -1125,9 +1129,7 @@ export async function getTraefikConfig(
                 }
 
                 const tls = {};
-                if (
-                    !privateConfig.getRawPrivateConfig().flags.use_pangolin_dns
-                ) {
+                if (!pangolinCertModeEnabled) {
                     // TODO: we need to add the wildcard logic here too
                 } else {
                     // find a cert that matches the full domain, if not continue
